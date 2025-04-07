@@ -3,7 +3,7 @@
 client_id = "6ebe44fc0838bd980369ffbd48f875a5"
 name = "Gooscale"
 handle = "gooscale"
-application_url = "https://clips-bristol-lancaster-weights.trycloudflare.com"
+application_url = "https://validation-entity-waste-opt.trycloudflare.com"
 embedded = true
 
 [build]
@@ -39,9 +39,9 @@ scopes = "write_products"
 
 [auth]
 redirect_urls = [
-  "https://clips-bristol-lancaster-weights.trycloudflare.com/auth/callback",
-  "https://clips-bristol-lancaster-weights.trycloudflare.com/auth/shopify/callback",
-  "https://clips-bristol-lancaster-weights.trycloudflare.com/api/auth/callback"
+  "https://validation-entity-waste-opt.trycloudflare.com/auth/callback",
+  "https://validation-entity-waste-opt.trycloudflare.com/auth/shopify/callback",
+  "https://validation-entity-waste-opt.trycloudflare.com/api/auth/callback"
 ]
 
 [pos]

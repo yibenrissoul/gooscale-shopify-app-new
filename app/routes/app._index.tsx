@@ -1,7 +1,7 @@
-import { useEffect } from "react";
-import type { ActionFunctionArgs, LoaderFunctionArgs } from "@remix-run/node";
-import { json, redirect } from "@remix-run/node";
-import { useFetcher } from "@remix-run/react";
+import { useEffect, useState } from "react";
+import type { LoaderFunctionArgs } from "@remix-run/node";
+import { json } from "@remix-run/node";
+import { useLoaderData, Link as RemixLink } from "@remix-run/react";
 import {
   Page,
   Layout,
@@ -13,323 +13,258 @@ import {
   List,
   Link,
   InlineStack,
+  Banner,
+  ProgressBar,
+  Icon,
+  EmptyState,
 } from "@shopify/polaris";
-import { TitleBar, useAppBridge } from "@shopify/app-bridge-react";
+import { TitleBar } from "@shopify/app-bridge-react";
+import { CheckIcon, GlobeIcon, LanguageIcon, InventoryIcon } from "@shopify/polaris-icons";
 import { authenticate } from "../shopify.server";
+import { GooscaleApiService } from "../services/gooscale-api.server";
+
+// Define the setup step interface
+interface SetupStep {
+  id: string;
+  title: string;
+  completed: boolean;
+}
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
-  await authenticate.admin(request);
+  const { session } = await authenticate.admin(request);
   
-  // Check if we need to redirect to the main application
-  const mainAppUrl = process.env.MAIN_APP_URL;
-  if (mainAppUrl) {
-    return redirect(mainAppUrl);
-  }
-
-  return null;
-};
-
-export const action = async ({ request }: ActionFunctionArgs) => {
-  const { admin } = await authenticate.admin(request);
-  const color = ["Red", "Orange", "Yellow", "Green"][
-    Math.floor(Math.random() * 4)
-  ];
-  const response = await admin.graphql(
-    `#graphql
-      mutation populateProduct($product: ProductCreateInput!) {
-        productCreate(product: $product) {
-          product {
-            id
-            title
-            handle
-            status
-            variants(first: 10) {
-              edges {
-                node {
-                  id
-                  price
-                  barcode
-                  createdAt
-                }
-              }
-            }
-          }
-        }
-      }`,
-    {
-      variables: {
-        product: {
-          title: `${color} Snowboard`,
-        },
-      },
-    },
-  );
-  const responseJson = await response.json();
-
-  const product = responseJson.data!.productCreate!.product!;
-  const variantId = product.variants.edges[0]!.node!.id!;
-
-  const variantResponse = await admin.graphql(
-    `#graphql
-    mutation shopifyRemixTemplateUpdateVariant($productId: ID!, $variants: [ProductVariantsBulkInput!]!) {
-      productVariantsBulkUpdate(productId: $productId, variants: $variants) {
-        productVariants {
-          id
-          price
-          barcode
-          createdAt
-        }
-      }
-    }`,
-    {
-      variables: {
-        productId: product.id,
-        variants: [{ id: variantId, price: "100.00" }],
-      },
-    },
-  );
-
-  const variantResponseJson = await variantResponse.json();
-
-  return {
-    product: responseJson!.data!.productCreate!.product,
-    variant:
-      variantResponseJson!.data!.productVariantsBulkUpdate!.productVariants,
-  };
+  // Check if the store is already linked to Gooscale
+  const gooscaleApi = new GooscaleApiService(session);
+  const isLinked = await gooscaleApi.isStoreLinked();
+  
+  // Get store information
+  const shopDomain = session.shop;
+  
+  return json({
+    shopDomain,
+    isLinked,
+    setupSteps: [
+      { id: "connect", title: "Connect your store", completed: isLinked },
+      { id: "sync", title: "Sync your products", completed: false },
+      { id: "configure", title: "Configure markets", completed: false },
+      { id: "launch", title: "Launch global storefronts", completed: false }
+    ] as SetupStep[]
+  });
 };
 
 export default function Index() {
-  const fetcher = useFetcher<typeof action>();
-
-  const shopify = useAppBridge();
-  const isLoading =
-    ["loading", "submitting"].includes(fetcher.state) &&
-    fetcher.formMethod === "POST";
-  const productId = fetcher.data?.product?.id.replace(
-    "gid://shopify/Product/",
-    "",
-  );
-
+  const { shopDomain, isLinked, setupSteps } = useLoaderData<typeof loader>();
+  const [setupProgress, setSetupProgress] = useState(0);
+  
+  // Calculate setup progress
   useEffect(() => {
-    if (productId) {
-      shopify.toast.show("Product created");
-    }
-  }, [productId, shopify]);
-  const generateProduct = () => fetcher.submit({}, { method: "POST" });
+    const completedSteps = setupSteps.filter(step => step.completed).length;
+    setSetupProgress((completedSteps / setupSteps.length) * 100);
+  }, [setupSteps]);
 
   return (
     <Page>
-      <TitleBar title="Remix app template">
-        <button variant="primary" onClick={generateProduct}>
-          Generate a product
-        </button>
-      </TitleBar>
+      <TitleBar
+        title="Gooscale Multi-Market Manager"
+        primaryAction={undefined}
+      />
+      
       <BlockStack gap="500">
+        {!isLinked && (
+          <Banner
+            title="Welcome to Gooscale Multi-Market Manager"
+            tone="info"
+            action={{content: 'Connect your store', url: '/app/connect'}}
+          >
+            Connect your Shopify store to Gooscale to start managing multiple markets and languages.
+          </Banner>
+        )}
+        
         <Layout>
           <Layout.Section>
             <Card>
-              <BlockStack gap="500">
-                <BlockStack gap="200">
-                  <Text as="h2" variant="headingMd">
-                    Congrats on creating a new Shopify app 🎉
-                  </Text>
+              <BlockStack gap="400">
+                <Text as="h2" variant="headingMd">
+                  Getting Started with Gooscale
+                </Text>
+                
+                <BlockStack gap="400">
                   <Text variant="bodyMd" as="p">
-                    This embedded app template uses{" "}
-                    <Link
-                      url="https://shopify.dev/docs/apps/tools/app-bridge"
-                      target="_blank"
-                      removeUnderline
-                    >
-                      App Bridge
-                    </Link>{" "}
-                    interface examples like an{" "}
-                    <Link url="/app/additional" removeUnderline>
-                      additional page in the app nav
-                    </Link>
-                    , as well as an{" "}
-                    <Link
-                      url="https://shopify.dev/docs/api/admin-graphql"
-                      target="_blank"
-                      removeUnderline
-                    >
-                      Admin GraphQL
-                    </Link>{" "}
-                    mutation demo, to provide a starting point for app
-                    development.
+                    Your store: <Text as="span" fontWeight="bold">{shopDomain}</Text>
                   </Text>
-                </BlockStack>
-                <BlockStack gap="200">
-                  <Text as="h3" variant="headingMd">
-                    Get started with products
-                  </Text>
-                  <Text as="p" variant="bodyMd">
-                    Generate a product with GraphQL and get the JSON output for
-                    that product. Learn more about the{" "}
-                    <Link
-                      url="https://shopify.dev/docs/api/admin-graphql/latest/mutations/productCreate"
-                      target="_blank"
-                      removeUnderline
-                    >
-                      productCreate
-                    </Link>{" "}
-                    mutation in our API references.
-                  </Text>
-                </BlockStack>
-                <InlineStack gap="300">
-                  <Button loading={isLoading} onClick={generateProduct}>
-                    Generate a product
-                  </Button>
-                  {fetcher.data?.product && (
-                    <Button
-                      url={`shopify:admin/products/${productId}`}
-                      target="_blank"
-                      variant="plain"
-                    >
-                      View product
-                    </Button>
-                  )}
-                </InlineStack>
-                {fetcher.data?.product && (
-                  <>
-                    <Text as="h3" variant="headingMd">
-                      {" "}
-                      productCreate mutation
+                  
+                  <Box paddingBlockEnd="400">
+                    <Text variant="bodyMd" as="p" fontWeight="medium">
+                      Setup Progress: {Math.round(setupProgress)}%
                     </Text>
-                    <Box
-                      padding="400"
-                      background="bg-surface-active"
-                      borderWidth="025"
-                      borderRadius="200"
-                      borderColor="border"
-                      overflowX="scroll"
-                    >
-                      <pre style={{ margin: 0 }}>
-                        <code>
-                          {JSON.stringify(fetcher.data.product, null, 2)}
-                        </code>
-                      </pre>
-                    </Box>
-                    <Text as="h3" variant="headingMd">
-                      {" "}
-                      productVariantsBulkUpdate mutation
-                    </Text>
-                    <Box
-                      padding="400"
-                      background="bg-surface-active"
-                      borderWidth="025"
-                      borderRadius="200"
-                      borderColor="border"
-                      overflowX="scroll"
-                    >
-                      <pre style={{ margin: 0 }}>
-                        <code>
-                          {JSON.stringify(fetcher.data.variant, null, 2)}
-                        </code>
-                      </pre>
-                    </Box>
-                  </>
-                )}
+                    <ProgressBar progress={setupProgress} size="small" />
+                  </Box>
+                  
+                  <BlockStack gap="300">
+                    {setupSteps.map((step: SetupStep, index: number) => (
+                      <InlineStack key={step.id} align="space-between" blockAlign="center">
+                        <InlineStack gap="200" blockAlign="center">
+                          <Box
+                            background={step.completed ? "success-subdued" : "surface-subdued"}
+                            borderRadius="full"
+                            padding="200"
+                            minWidth="24px"
+                            minHeight="24px"
+                            borderWidth="025"
+                            borderColor={step.completed ? "success" : "border"}
+                          >
+                            <Box style={{ display: "flex", justifyContent: "center", alignItems: "center" }}>
+                              {step.completed ? (
+                                <Icon source={CheckIcon} color="success" />
+                              ) : (
+                                <Text variant="bodyMd" fontWeight="semibold">
+                                  {index + 1}
+                                </Text>
+                              )}
+                            </Box>
+                          </Box>
+                          <Text variant="bodyMd" as="span" fontWeight={step.completed ? "regular" : "medium"}>
+                            {step.title}
+                          </Text>
+                        </InlineStack>
+                        
+                        {step.id === "connect" && !step.completed && (
+                          <Button
+                            variant="primary"
+                            url="/app/connect"
+                          >
+                            Connect
+                          </Button>
+                        )}
+                        
+                        {step.id === "sync" && isLinked && !step.completed && (
+                          <Button
+                            variant="primary"
+                            url="/app/sync"
+                          >
+                            Sync Products
+                          </Button>
+                        )}
+                      </InlineStack>
+                    ))}
+                  </BlockStack>
+                </BlockStack>
               </BlockStack>
             </Card>
+            
+            {!isLinked ? (
+              <Box paddingBlockStart="500">
+                <Card>
+                  <EmptyState
+                    heading="Expand your business globally"
+                    image="https://cdn.shopify.com/s/files/1/0262/4071/2726/files/emptystate-files.png"
+                    action={{
+                      content: "Connect your store",
+                      url: "/app/connect",
+                    }}
+                  >
+                    Connect your Shopify store to Gooscale to start managing multiple markets and languages from a single dashboard.
+                  </EmptyState>
+                </Card>
+              </Box>
+            ) : (
+              <Box paddingBlockStart="500">
+                <Card>
+                  <BlockStack gap="400">
+                    <Text as="h2" variant="headingMd">
+                      Your Multi-Market Dashboard
+                    </Text>
+                    <Text as="p">
+                      Your store is connected to Gooscale. Continue setting up your multi-market strategy.
+                    </Text>
+                    <InlineStack gap="300">
+                      <Button variant="primary" url="/app/sync">
+                        Sync Products
+                      </Button>
+                      <Button url="/app/markets">
+                        Configure Markets
+                      </Button>
+                    </InlineStack>
+                  </BlockStack>
+                </Card>
+              </Box>
+            )}
           </Layout.Section>
+          
           <Layout.Section variant="oneThird">
             <BlockStack gap="500">
               <Card>
-                <BlockStack gap="200">
+                <BlockStack gap="400">
                   <Text as="h2" variant="headingMd">
-                    App template specs
+                    Why use Gooscale?
                   </Text>
-                  <BlockStack gap="200">
-                    <InlineStack align="space-between">
-                      <Text as="span" variant="bodyMd">
-                        Framework
+                  
+                  <BlockStack gap="300">
+                    <InlineStack gap="300" blockAlign="center">
+                      <Icon source={GlobeIcon} color="highlight" />
+                      <Text as="span" variant="bodyMd" fontWeight="semibold">
+                        Centralized Management
                       </Text>
-                      <Link
-                        url="https://remix.run"
-                        target="_blank"
-                        removeUnderline
-                      >
-                        Remix
-                      </Link>
                     </InlineStack>
-                    <InlineStack align="space-between">
-                      <Text as="span" variant="bodyMd">
-                        Database
+                    <Text as="p" variant="bodyMd">
+                      Manage multiple markets and storefronts from a single dashboard.
+                    </Text>
+                    
+                    <InlineStack gap="300" blockAlign="center">
+                      <Icon source={LanguageIcon} color="highlight" />
+                      <Text as="span" variant="bodyMd" fontWeight="semibold">
+                        Multilingual Support
                       </Text>
-                      <Link
-                        url="https://www.prisma.io/"
-                        target="_blank"
-                        removeUnderline
-                      >
-                        Prisma
-                      </Link>
                     </InlineStack>
-                    <InlineStack align="space-between">
-                      <Text as="span" variant="bodyMd">
-                        Interface
+                    <Text as="p" variant="bodyMd">
+                      Create and manage content in multiple languages to reach global customers.
+                    </Text>
+                    
+                    <InlineStack gap="300" blockAlign="center">
+                      <Icon source={InventoryIcon} color="highlight" />
+                      <Text as="span" variant="bodyMd" fontWeight="semibold">
+                        Streamlined Operations
                       </Text>
-                      <span>
-                        <Link
-                          url="https://polaris.shopify.com"
-                          target="_blank"
-                          removeUnderline
-                        >
-                          Polaris
-                        </Link>
-                        {", "}
-                        <Link
-                          url="https://shopify.dev/docs/apps/tools/app-bridge"
-                          target="_blank"
-                          removeUnderline
-                        >
-                          App Bridge
-                        </Link>
-                      </span>
                     </InlineStack>
-                    <InlineStack align="space-between">
-                      <Text as="span" variant="bodyMd">
-                        API
-                      </Text>
-                      <Link
-                        url="https://shopify.dev/docs/api/admin-graphql"
-                        target="_blank"
-                        removeUnderline
-                      >
-                        GraphQL API
-                      </Link>
-                    </InlineStack>
+                    <Text as="p" variant="bodyMd">
+                      Simplify inventory, pricing, and order management across all your markets.
+                    </Text>
                   </BlockStack>
                 </BlockStack>
               </Card>
+              
               <Card>
-                <BlockStack gap="200">
+                <BlockStack gap="400">
                   <Text as="h2" variant="headingMd">
-                    Next steps
+                    Resources
                   </Text>
                   <List>
                     <List.Item>
-                      Build an{" "}
-                      <Link
-                        url="https://shopify.dev/docs/apps/getting-started/build-app-example"
-                        target="_blank"
-                        removeUnderline
-                      >
-                        {" "}
-                        example app
-                      </Link>{" "}
-                      to get started
+                      <Link url="https://help.gooscale.com/getting-started" external removeUnderline>
+                        Getting started with Gooscale
+                      </Link>
                     </List.Item>
                     <List.Item>
-                      Explore Shopify’s API with{" "}
-                      <Link
-                        url="https://shopify.dev/docs/apps/tools/graphiql-admin-api"
-                        target="_blank"
-                        removeUnderline
-                      >
-                        GraphiQL
+                      <Link url="https://help.gooscale.com/multi-market-strategy" external removeUnderline>
+                        Building a multi-market strategy
+                      </Link>
+                    </List.Item>
+                    <List.Item>
+                      <Link url="https://help.gooscale.com/faq" external removeUnderline>
+                        Frequently asked questions
                       </Link>
                     </List.Item>
                   </List>
+                  
+                  <Box paddingBlockStart="200">
+                    <InlineStack gap="200">
+                      <Link url="/app/help">Help Center</Link>
+                      <Text as="span" color="subdued">•</Text>
+                      <Link url="/app/privacy">Privacy Policy</Link>
+                      <Text as="span" color="subdued">•</Text>
+                      <Link url="/app/terms">Terms of Service</Link>
+                    </InlineStack>
+                  </Box>
                 </BlockStack>
               </Card>
             </BlockStack>

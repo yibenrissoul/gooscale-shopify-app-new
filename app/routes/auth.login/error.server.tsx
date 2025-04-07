@@ -1,5 +1,7 @@
-import type { LoginError } from "@shopify/shopify-app-remix/server";
-import { LoginErrorType } from "@shopify/shopify-app-remix/server";
+import {
+  type LoginError,
+  LoginErrorType,
+} from "@shopify/shopify-app-remix/server";
 
 interface LoginErrorMessage {
   shop?: string;
