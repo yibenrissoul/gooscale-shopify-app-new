@@ -5,6 +5,9 @@ import {
   shopifyApp,
 } from "@shopify/shopify-app-remix/server";
 import { SQLiteSessionStorage } from "@shopify/shopify-app-session-storage-sqlite";
+import dotenv from "dotenv";
+
+dotenv.config();
 
 // Use SQLite session storage directly instead of Prisma
 const sessionStorage = new SQLiteSessionStorage(
@@ -14,7 +17,7 @@ const sessionStorage = new SQLiteSessionStorage(
 const shopify = shopifyApp({
   apiKey: process.env.SHOPIFY_API_KEY,
   apiSecretKey: process.env.SHOPIFY_API_SECRET || "",
-  apiVersion: ApiVersion.April25,
+  apiVersion: ApiVersion.October23,
   scopes: process.env.SCOPES?.split(","),
   appUrl: process.env.SHOPIFY_APP_URL || "http://localhost:3000",
   authPathPrefix: "/auth",
@@ -31,10 +34,4 @@ const shopify = shopifyApp({
 });
 
 export default shopify;
-export const apiVersion = ApiVersion.April25;
-export const addDocumentResponseHeaders = shopify.addDocumentResponseHeaders;
-export const authenticate = shopify.authenticate;
-export const unauthenticated = shopify.unauthenticated;
-export const login = shopify.login;
-export const registerWebhooks = shopify.registerWebhooks;
-export { sessionStorage };
+export { shopify, ApiVersion, sessionStorage };

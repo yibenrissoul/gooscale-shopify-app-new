@@ -17,11 +17,10 @@ import {
   Icon,
   EmptyState,
 } from "@shopify/polaris";
-import { authenticate } from "../shopify.server";
-import { GooscaleApiService } from "../services/gooscale-api.server";
+import { shopify } from "../shopify.server";
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
-  const { session } = await authenticate.admin(request);
+  const { session } = await shopify.authenticate.admin(request);
   
   // Get store information
   const shopDomain = session.shop;
@@ -65,7 +64,7 @@ export default function Index() {
           action={{
             content: "Install",
             url: "/app/connect",
-            external: true
+            external: false
           }}
         >
           <Text variant="bodyMd" as="p">
@@ -85,7 +84,7 @@ export default function Index() {
                   {features.map((feature, index) => (
                     <Box key={index} padding="200">
                       <InlineStack gap="200" align="center">
-                        <Icon source={feature.icon} tone="highlight" size="large" />
+                        <Icon source={feature.icon} tone="success" />
                         <BlockStack gap="100">
                           <Text as="h3" variant="headingSm">
                             {feature.title}
@@ -126,22 +125,22 @@ export default function Index() {
                 </Text>
                 <List>
                   <List.Item>
-                    <Link url="https://help.gooscale.com" external removeUnderline>
+                    <Link url="/app/help" external={false} removeUnderline>
                       Help Center
                     </Link>
                   </List.Item>
                   <List.Item>
-                    <Link url="https://help.gooscale.com/faq" external removeUnderline>
+                    <Link url="/app/faq" external={false} removeUnderline>
                       FAQ
                     </Link>
                   </List.Item>
                   <List.Item>
-                    <Link url="https://help.gooscale.com/privacy" external removeUnderline>
+                    <Link url="/app/privacy" external={false} removeUnderline>
                       Privacy Policy
                     </Link>
                   </List.Item>
                   <List.Item>
-                    <Link url="https://help.gooscale.com/terms" external removeUnderline>
+                    <Link url="/app/terms" external={false} removeUnderline>
                       Terms of Service
                     </Link>
                   </List.Item>
