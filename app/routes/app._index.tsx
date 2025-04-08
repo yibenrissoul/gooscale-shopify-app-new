@@ -17,7 +17,7 @@ import {
   Icon,
   EmptyState,
 } from "@shopify/polaris";
-import { shopify } from "../shopify.server";
+import shopify from "~/shopify.server";
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
   const { session } = await shopify.authenticate.admin(request);

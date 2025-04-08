@@ -3,7 +3,7 @@
 client_id = "6ebe44fc0838bd980369ffbd48f875a5"
 name = "Gooscale"
 handle = "gooscale"
-application_url = "https://determination-detection-locked-organic.trycloudflare.com"
+application_url = "https://rolled-north-were-mic.trycloudflare.com"
 embedded = true
 
 [build]
@@ -39,9 +39,9 @@ scopes = "write_products"
 
 [auth]
 redirect_urls = [
-  "https://determination-detection-locked-organic.trycloudflare.com/auth/callback",
-  "https://determination-detection-locked-organic.trycloudflare.com/auth/shopify/callback",
-  "https://determination-detection-locked-organic.trycloudflare.com/api/auth/callback"
+  "https://rolled-north-were-mic.trycloudflare.com/auth/callback",
+  "https://rolled-north-were-mic.trycloudflare.com/auth/shopify/callback",
+  "https://rolled-north-were-mic.trycloudflare.com/api/auth/callback"
 ]
 
 [pos]
