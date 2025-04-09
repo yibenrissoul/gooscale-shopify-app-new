@@ -5,8 +5,9 @@ import {
   shopifyApp,
   Session,
 } from "@shopify/shopify-app-remix/server";
-import { SQLiteSessionStorage } from "@shopify/shopify-app-session-storage-sqlite";
+import { PrismaSessionStorage } from "@shopify/shopify-app-session-storage-prisma";
 import dotenv from "dotenv";
+import { PrismaClient } from "@prisma/client";
 
 dotenv.config();
 
@@ -18,10 +19,11 @@ if (missingEnvVars.length > 0) {
   throw new Error(`Missing required environment variables: ${missingEnvVars.join(', ')}`);
 }
 
+// Initialize Prisma client
+const prisma = new PrismaClient();
+
 // Initialize session storage
-const sessionStorage = new SQLiteSessionStorage(
-  process.env.DATABASE_URL || "file:./dev.sqlite"
-);
+const sessionStorage = new PrismaSessionStorage(prisma);
 
 // Define required scopes for customer data access
 const requiredScopes = [
@@ -31,6 +33,8 @@ const requiredScopes = [
   'write_orders',
   'read_products',
   'write_products',
+  'webhooks_read',
+  'webhooks_write',
 ];
 
 const shopify = shopifyApp({
@@ -64,6 +68,56 @@ const shopify = shopifyApp({
   // Add support contact
   supportEmail: "support@gooscale.com"
 });
+
+// Function to register webhooks for a shop
+async function registerShopWebhooks(shop: string) {
+  const session = await sessionStorage.loadSession(shop);
+  if (!session) {
+    throw new Error(`No session found for shop ${shop}`);
+  }
+
+  const webhookTopics = [
+    "orders/create",
+    "orders/updated",
+    "customers/create"
+  ];
+
+  for (const topic of webhookTopics) {
+    try {
+      await shopify.registerWebhooks({
+        session: session,
+        webhook: {
+          path: "/api/webhooks",
+          topic,
+          accessToken: session.accessToken,
+        }
+      });
+    } catch (error) {
+      console.error(`Failed to register webhook for topic ${topic}:`, error);
+    }
+  }
+}
+
+// Register webhooks for all shops
+async function registerAllWebhooks() {
+  try {
+    const sessions = await prisma.session.findMany();
+    const shops = sessions.map((session) => session.shop);
+    
+    for (const shop of shops) {
+      try {
+        await registerShopWebhooks(shop);
+      } catch (error) {
+        console.error(`Failed to register webhooks for shop ${shop}:`, error);
+      }
+    }
+  } catch (error) {
+    console.error('Failed to get all shops:', error);
+  }
+}
+
+// Register webhooks when the app starts
+registerAllWebhooks().catch(console.error);
 
 export default shopify;
 export type { Session };
