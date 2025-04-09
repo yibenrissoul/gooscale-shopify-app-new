@@ -15,6 +15,7 @@ import {
   Banner,
   Icon,
   EmptyState,
+  List,
 } from "@shopify/polaris";
 import shopify from "~/shopify.server";
 
@@ -77,6 +78,25 @@ export default function Index() {
                   external
                 >
                   Go to Gooscale Platform
+                </Button>
+              </BlockStack>
+            </Card>
+          </Layout.Section>
+
+          <Layout.Section>
+            <Card>
+              <BlockStack gap="400">
+                <Text as="h2" variant="headingMd">
+                  Manage Customer Orders
+                </Text>
+                <Text as="p" variant="bodyMd">
+                  Collect and manage customer order data directly from your Shopify store.
+                </Text>
+                <Button
+                  url="/app/customer-order"
+                  variant="primary"
+                >
+                  Manage Customer Orders
                 </Button>
               </BlockStack>
             </Card>
