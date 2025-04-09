@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import type { LoaderFunctionArgs } from "@remix-run/node";
 import { json } from "@remix-run/node";
 import { useLoaderData } from "@remix-run/react";
@@ -10,7 +10,6 @@ import {
   Button,
   BlockStack,
   Box,
-  List,
   Link,
   InlineStack,
   Banner,
@@ -27,48 +26,36 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
   
   return json({
     shopDomain,
-    features: [
-      {
-        title: "Multi-Market Management",
-        description: "Manage your global e-commerce operations from a single dashboard",
-        icon: "globe"
-      },
-      {
-        title: "Multi-Language Support",
-        description: "Create and manage content in multiple languages for global reach",
-        icon: "language"
-      },
-      {
-        title: "Smart Synchronization",
-        description: "Automatically sync products across all your markets",
-        icon: "sync"
-      },
-      {
-        title: "Centralized Configuration",
-        description: "Easily manage settings for all your stores from one place",
-        icon: "settings"
-      }
-    ]
   });
 };
 
 export default function Index() {
-  const { shopDomain, features } = useLoaderData<typeof loader>();
+  const { shopDomain } = useLoaderData<typeof loader>();
   
+  // Redirect to Gooscale platform after 2 seconds
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      window.location.href = "https://partners-staging.gooscale.com/auth/login";
+    }, 2000);
+    return () => clearTimeout(timer);
+  }, []);
+
   return (
     <Page>
       <BlockStack gap="500">
         <Banner
-          title="Welcome to Gooscale Multi-Market Manager"
+          title="Welcome to Gooscale"
           tone="info"
           action={{
-            content: "Install",
-            url: "/app/connect",
-            external: false
+            content: "Go to Gooscale Platform",
+            url: "https://partners-staging.gooscale.com/auth/login",
+            external: true
           }}
         >
           <Text variant="bodyMd" as="p">
-            Gooscale helps you expand your Shopify store globally with multi-market and multilingual support
+            Gooscale is your all-in-one solution for global e-commerce management. 
+            This Shopify app integrates seamlessly with the Gooscale platform to help 
+            you expand your business internationally.
           </Text>
         </Banner>
 
@@ -77,41 +64,19 @@ export default function Index() {
             <Card>
               <BlockStack gap="400">
                 <Text as="h2" variant="headingMd">
-                  Features
-                </Text>
-
-                <BlockStack gap="300">
-                  {features.map((feature, index) => (
-                    <Box key={index} padding="200">
-                      <InlineStack gap="200" align="center">
-                        <Icon source={feature.icon} tone="success" />
-                        <BlockStack gap="100">
-                          <Text as="h3" variant="headingSm">
-                            {feature.title}
-                          </Text>
-                          <Text as="p" variant="bodyMd">
-                            {feature.description}
-                          </Text>
-                        </BlockStack>
-                      </InlineStack>
-                    </Box>
-                  ))}
-                </BlockStack>
-              </BlockStack>
-            </Card>
-          </Layout.Section>
-
-          <Layout.Section>
-            <Card>
-              <BlockStack gap="400">
-                <Text as="h2" variant="headingMd">
-                  Get Started
+                  Your Global E-commerce Solution
                 </Text>
                 <Text as="p" variant="bodyMd">
-                  Connect your Shopify store to Gooscale to start managing multiple markets and languages.
+                  This app connects your Shopify store to the Gooscale platform, 
+                  enabling you to manage multiple markets and languages from a single 
+                  dashboard. Visit the Gooscale platform to get started.
                 </Text>
-                <Button url="/app/connect" variant="primary">
-                  Connect Store
+                <Button
+                  url="https://partners-staging.gooscale.com/auth/login"
+                  variant="primary"
+                  external
+                >
+                  Go to Gooscale Platform
                 </Button>
               </BlockStack>
             </Card>
@@ -121,27 +86,25 @@ export default function Index() {
             <Card>
               <BlockStack gap="400">
                 <Text as="h2" variant="headingMd">
-                  Support
+                  Learn More
                 </Text>
                 <List>
                   <List.Item>
-                    <Link url="/app/help" external={false} removeUnderline>
-                      Help Center
+                    <Link 
+                      url="https://gooscale.com"
+                      external
+                      removeUnderline
+                    >
+                      Visit Gooscale Website
                     </Link>
                   </List.Item>
                   <List.Item>
-                    <Link url="/app/faq" external={false} removeUnderline>
-                      FAQ
-                    </Link>
-                  </List.Item>
-                  <List.Item>
-                    <Link url="/app/privacy" external={false} removeUnderline>
-                      Privacy Policy
-                    </Link>
-                  </List.Item>
-                  <List.Item>
-                    <Link url="/app/terms" external={false} removeUnderline>
-                      Terms of Service
+                    <Link 
+                      url="https://partners-staging.gooscale.com/auth/login"
+                      external
+                      removeUnderline
+                    >
+                      Access Platform
                     </Link>
                   </List.Item>
                 </List>
