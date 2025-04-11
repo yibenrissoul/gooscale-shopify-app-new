@@ -4,6 +4,7 @@ import {
   AppDistribution,
   shopifyApp,
   Session,
+  DeliveryMethod,
 } from "@shopify/shopify-app-remix/server";
 import { PrismaSessionStorage } from "@shopify/shopify-app-session-storage-prisma";
 import dotenv from "dotenv";
@@ -37,89 +38,118 @@ const requiredScopes = [
   'webhooks_write',
 ];
 
+// Initialize Shopify app
 const shopify = shopifyApp({
-  apiKey: process.env.SHOPIFY_API_KEY || "",
-  apiSecretKey: process.env.SHOPIFY_API_SECRET || "",
-  apiVersion: ApiVersion.October23,
-  scopes: requiredScopes,
-  appUrl: process.env.SHOPIFY_APP_URL || "https://partners-staging.gooscale.com",
-  authPathPrefix: "/auth",
+  api: {
+    apiVersion: ApiVersion.October23,
+    apiKey: process.env.SHOPIFY_API_KEY || "",
+    apiSecretKey: process.env.SHOPIFY_API_SECRET || "",
+    scopes: requiredScopes,
+    isEmbeddedApp: true,
+    appUrl: process.env.SHOPIFY_APP_URL || "https://partners-staging.gooscale.com",
+  },
   sessionStorage,
   distribution: AppDistribution.AppStore,
   future: {
     unstable_newEmbeddedAuthStrategy: true,
     removeRest: true,
   },
-  isEmbeddedApp: true,
   ...(process.env.SHOP_CUSTOM_DOMAIN
     ? { customShopDomains: [process.env.SHOP_CUSTOM_DOMAIN] }
     : {}),
   
   // Add privacy policy and terms of service
-  privacyPolicyUrl: "https://gooscale.com/privacy",
-  termsOfServiceUrl: "https://gooscale.com/terms",
+  legal: {
+    privacyPolicyUrl: "https://gooscale.com/privacy",
+    termsOfServiceUrl: "https://gooscale.com/terms",
+  },
   
   // Add data retention policy
-  dataRetentionPolicy: {
+  dataRetention: {
     retentionPeriod: "30 days",
     deletionPolicy: "Automatic"
   },
   
   // Add support contact
-  supportEmail: "support@gooscale.com"
+  supportEmail: "support@gooscale.com",
+  webhooks: {
+    ORDERS_CREATE: {
+      deliveryMethod: DeliveryMethod.Http,
+      callbackUrl: "/api/webhooks/orders-create",
+    },
+    ORDERS_UPDATED: {
+      deliveryMethod: DeliveryMethod.Http,
+      callbackUrl: "/api/webhooks/orders-updated",
+    },
+    CUSTOMERS_CREATE: {
+      deliveryMethod: DeliveryMethod.Http,
+      callbackUrl: "/api/webhooks/customers-create",
+    },
+    CUSTOMERS_UPDATE: {
+      deliveryMethod: DeliveryMethod.Http,
+      callbackUrl: "/api/webhooks/customers-update",
+    },
+    PRODUCTS_CREATE: {
+      deliveryMethod: DeliveryMethod.Http,
+      callbackUrl: "/api/webhooks/products-create",
+    },
+    PRODUCTS_UPDATE: {
+      deliveryMethod: DeliveryMethod.Http,
+      callbackUrl: "/api/webhooks/products-update",
+    },
+    APP_UNINSTALLED: {
+      deliveryMethod: DeliveryMethod.Http,
+      callbackUrl: "/api/webhooks/app-uninstalled",
+    },
+  },
+  hooks: {
+    afterAuth: async ({ session }) => {
+      await shopify.registerWebhooks({ session });
+    },
+  },
 });
 
-// Function to register webhooks for a shop
-async function registerShopWebhooks(shop: string) {
-  const session = await sessionStorage.loadSession(shop);
-  if (!session) {
-    throw new Error(`No session found for shop ${shop}`);
-  }
-
-  const webhookTopics = [
-    "orders/create",
-    "orders/updated",
-    "customers/create"
-  ];
-
-  for (const topic of webhookTopics) {
-    try {
-      await shopify.registerWebhooks({
-        session: session,
-        webhook: {
-          path: "/api/webhooks",
-          topic,
-          accessToken: session.accessToken,
-        }
-      });
-    } catch (error) {
-      console.error(`Failed to register webhook for topic ${topic}:`, error);
-    }
+// Function to register webhooks for a specific shop
+async function registerShopWebhooks(session: Session) {
+  try {
+    await shopify.registerWebhooks({ session });
+    console.log(`Successfully registered webhooks for shop ${session.shop}`);
+  } catch (error) {
+    console.error(`Failed to register webhooks for shop ${session.shop}:`, error);
   }
 }
 
-// Register webhooks for all shops
-async function registerAllWebhooks() {
+// Function to register webhooks for all shops
+async function registerAllShopWebhooks() {
   try {
-    const sessions = await prisma.session.findMany();
-    const shops = sessions.map((session) => session.shop);
+    const sessions = await prisma.session.findMany({
+      select: {
+        shop: true
+      }
+    });
     
-    for (const shop of shops) {
+    for (const { shop } of sessions) {
       try {
-        await registerShopWebhooks(shop);
+        const session = await sessionStorage.loadSession(shop);
+        if (!session) {
+          throw new Error(`No session found for shop ${shop}`);
+        }
+        await registerShopWebhooks(session);
       } catch (error) {
         console.error(`Failed to register webhooks for shop ${shop}:`, error);
       }
     }
   } catch (error) {
-    console.error('Failed to get all shops:', error);
+    console.error('Failed to register webhooks:', error);
   }
 }
 
 // Register webhooks when the app starts
-registerAllWebhooks().catch(console.error);
+registerAllShopWebhooks().catch(console.error);
 
+// Export authenticate as a named export
 export const authenticate = shopify.authenticate;
 
+// Export default shopify instance
 export default shopify;
 export type { Session };

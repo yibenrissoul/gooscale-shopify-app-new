@@ -9,32 +9,40 @@ import {
   Text,
   Banner,
   Button,
-  CalloutCard,
   InlineStack,
 } from "@shopify/polaris";
-import { authenticate } from "~/shopify.server";
 import shopify from "~/shopify.server";
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
-  const { session } = await authenticate.admin(request);
+  const { session } = await shopify.authenticate.admin(request);
   return json({ shop: session.shop });
 };
 
 export const action = async ({ request }: ActionFunctionArgs) => {
-  const { session } = await authenticate.admin(request);
+  const { session } = await shopify.authenticate.admin(request);
   const formData = await request.formData();
   const action = formData.get("action") as string;
 
   if (action === "setup") {
     try {
-      await shopify.app.registerWebhooks({
-        session: session,
-        webhook: {
-          path: "/api/webhooks",
-          topic: "orders/create",
-          accessToken: session.accessToken,
-        }
-      });
+      // Register multiple webhook topics
+      const webhookTopics = [
+        "orders/create",
+        "orders/updated",
+        "customers/create"
+      ];
+
+      for (const topic of webhookTopics) {
+        await shopify.app.registerWebhooks({
+          session: session,
+          webhook: {
+            path: "/api/webhooks",
+            topic,
+            accessToken: session.accessToken,
+            address: `https://${process.env.SHOPIFY_APP_URL}/api/webhooks`,
+          }
+        });
+      }
       
       return json({
         status: "success",
@@ -70,25 +78,23 @@ export default function WebhooksSetup() {
               {actionData?.status === "success" ? (
                 <Banner title={actionData.message} tone="success" />
               ) : (
-                <Card>
-                  <BlockStack gap="200">
-                    <Text variant="headingLg" as="h2">
-                      Webhook Setup
-                    </Text>
-                    <Text as="p" variant="bodyMd">
-                      Let us handle the technical details of connecting your Shopify store to Gooscale.
-                    </Text>
-                    <Text as="p" variant="bodyMd">
-                      By clicking "Set Up Webhooks", we will automatically configure the necessary connections between your Shopify store and Gooscale. This will enable real-time synchronization of your orders and customers.
-                    </Text>
-                    <Button
-                      onClick={handleSetup}
-                      loading={actionData?.status === "loading"}
-                    >
-                      Set Up Webhooks
-                    </Button>
-                  </BlockStack>
-                </Card>
+                <BlockStack gap="400">
+                  <Text variant="headingLg" as="h2">
+                    Webhook Setup
+                  </Text>
+                  <Text as="p" variant="bodyMd">
+                    Let us handle the technical details of connecting your Shopify store to Gooscale.
+                  </Text>
+                  <Text as="p" variant="bodyMd">
+                    By clicking "Set Up Webhooks", we will automatically configure the necessary connections between your Shopify store and Gooscale. This will enable real-time synchronization of your orders and customers.
+                  </Text>
+                  <Button
+                    onClick={handleSetup}
+                    loading={actionData?.status === "loading"}
+                  >
+                    Set Up Webhooks
+                  </Button>
+                </BlockStack>
               )}
             </BlockStack>
           </Card>
