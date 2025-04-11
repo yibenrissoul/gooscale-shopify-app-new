@@ -119,5 +119,7 @@ async function registerAllWebhooks() {
 // Register webhooks when the app starts
 registerAllWebhooks().catch(console.error);
 
+export const authenticate = shopify.authenticate;
+
 export default shopify;
 export type { Session };

@@ -6,7 +6,7 @@ import { AppProvider } from "@shopify/shopify-app-remix/react";
 import { NavMenu } from "@shopify/app-bridge-react";
 import polarisStyles from "@shopify/polaris/build/esm/styles.css?url";
 
-import { authenticate } from "../shopify.server";
+import { authenticate } from "~/shopify.server";
 
 export const links = () => [{ rel: "stylesheet", href: polarisStyles }];
 
@@ -45,6 +45,9 @@ export default function App() {
         </Link>
         <Link to="/app/connect">
           Connect to Gooscale
+        </Link>
+        <Link to="/app/webhooks">
+          Webhook Setup
         </Link>
         <Link to="/app/additional">Additional page</Link>
       </NavMenu>
